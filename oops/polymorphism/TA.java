@@ -7,4 +7,7 @@ public class TA extends User{
     void takeHelpRequest(){
 
     }
+    void changeEmail(){
+        System.out.println("Changing email in ta");
+    }
 }

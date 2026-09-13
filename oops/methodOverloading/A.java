@@ -1,8 +1,9 @@
 package oops.methodOverloading;
 
 //method overloading happens when there are two or more methods with same name
-//but different signatures 
+//but different signatures  (return type is not a part of signature).
 //return time doesnt contribute to it.
+//method-overloading is also a type of polymorphism (compile time type)
 public class A {
     //compile time polymorphism -> during compile time only, the compiler knows its polymorphism here (many forms of the same function)
     

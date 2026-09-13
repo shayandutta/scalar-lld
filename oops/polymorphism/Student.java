@@ -8,4 +8,7 @@ public class Student extends User {
     void changeBatch(){
         System.out.println("batch changed");
     }
+    void changeEmail(){
+        System.out.println("Changing email in student");
+    }
 }

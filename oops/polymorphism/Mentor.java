@@ -8,4 +8,7 @@ public class Mentor extends User{
     void mentorCompany(){
         System.out.println("mentors company is"+company);
     }
+    void changeEmail(){
+        System.out.println("Changing email in mentor");
+    }
 }

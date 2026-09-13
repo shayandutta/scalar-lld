@@ -5,6 +5,6 @@ public class User {
     String password;
 
     void changeEmail(){
-        
+        System.out.println("Changing email in user");
     }
 }
