@@ -16,4 +16,8 @@ public class User {
     void printName(){
         System.out.println(name);
     }
+
+    private void printOk(){
+        System.out.println("print ok");
+    }
 }
