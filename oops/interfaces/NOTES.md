@@ -1,5 +1,17 @@
 # Interfaces
 
+## Relate it to real life first
+
+Think about a **wall power socket**. The socket has a specific standard shape and voltage — that's the "contract." Any device you plug into it — a lamp, a phone charger, a laptop, a toaster — is designed to fit that exact standard. The socket doesn't care AT ALL what's on the other end of the plug, how the device works internally, or what it's actually going to do with the electricity. It only guarantees one thing: "if you fit this shape, you'll get power." Completely unrelated devices — a lamp and a toaster share nothing in common as objects — can both plug into the exact same socket, because they both honor the same *contract*, not because they're the same kind of thing.
+
+That's an interface: a contract that says "anything claiming to fit this description must be able to do X" — without caring what the thing actually is, or how it does X internally.
+
+## The actual concept, properly explained
+
+An `interface` in Java declares method signatures (name + parameters + return type) with **no body at all** — pure requirement, zero implementation. Any class that says `implements SomeInterface` is making a binding promise to the compiler: "I will provide a real, working body for every single method that interface demands." If it doesn't, the code won't compile.
+
+This is different from extending a class. When you `extends` a class, you inherit real fields and real working method bodies — actual reusable code. When you `implements` an interface, you inherit nothing executable at all (in the basic case shown in this code) — only an obligation to write the implementation yourself.
+
 ## The code
 
 ```java
@@ -63,39 +75,44 @@ for (Herbivore herbivore : herbivores) {
 }
 ```
 
-## What's going on, in plain words
+## Walking through the diamond problem — why it exists, and why interfaces avoid it
 
-An interface is a pure contract — it says "anything that claims to be this must have these methods," but it doesn't write the methods itself. `Herbivore` just says: if you're a `Herbivore`, you must have `eatPlant()`. It gives zero implementation. Whoever `implements Herbivore` (`Dog`, `Human`) has to write the actual body themselves.
+Here's the classic scenario that Java's designers were worried about. Imagine (hypothetically — Java doesn't actually allow this) a class could extend two parent *classes* at once, and both parents had their own, different, real, working implementations of a method with the same name — say both had a working `speak()` method that printed something different. If `Child` extends both and calls `speak()`, which parent's actual code should run? There's no sensible answer — this is called the "diamond problem" (the inheritance diagram, drawn out, looks like a diamond shape). Because of this exact ambiguity risk, Java made a firm rule: **a class can only ever `extends` ONE other class.** No exceptions.
 
-Compare with a class you `extends` (like `Mammal`) — a class can carry real fields and real method bodies that get inherited as-is. An interface carries no state and (in this code) no bodies at all, only names and signatures.
+Interfaces are able to sidestep this entirely. Why? Because (in the code shown here, without Java 8's newer `default` methods) an interface method has **no body whatsoever** — it's not "an implementation that might conflict with another implementation," it's just a bare requirement with nothing behind it. When `Human implements Omnivore` (which merges `Herbivore` + `Carnivore`'s requirements), there's no scenario where Java has to pick "whose actual code should run" — because neither `Herbivore` nor `Carnivore` brought any actual code to begin with. `Human` is simply required to write its own `eatPlant()` and its own `eatAnimal()`, from scratch. There's only ever one real implementation in existence: the one the concrete class itself writes. Ambiguity is structurally impossible.
 
-## Diamond problem — why interfaces dodge it
+*(Worth knowing for later: Java 8 introduced `default` methods, which let an interface provide an actual method body. If a class implemented two interfaces that both provided conflicting `default` implementations of the same method, the diamond problem could technically resurface — Java handles this by forcing the implementing class to explicitly override that method itself and resolve the conflict by hand, rather than silently picking one. This particular code doesn't use `default` methods, so it never runs into that situation.)*
 
-The classic problem: if a class could inherit from two parent *classes* that both implement the same method differently, the compiler wouldn't know whose version to use when you call it — that's the "diamond problem," and it's the reason Java only allows a class to `extends` one other class.
+## One class, many interfaces — but only one parent class, ever
 
-Interfaces sidestep this. Since (in this code) an interface method has no body at all — just a name and signature — there's nothing to be ambiguous about. When `Human implements Omnivore` (which itself is `Herbivore` + `Carnivore` combined), Java doesn't need to pick "whose `eatPlant()` implementation wins," because neither `Herbivore` nor `Carnivore` brought an implementation in the first place. `Human` is simply required to write its own `eatPlant()` and its own `eatAnimal()` — there's only ever one real implementation, the one the concrete class writes. No ambiguity possible.
+Look closely: `Dog extends Mammal implements Herbivore`. One `extends`, but `implements` is allowed to list as many interfaces as needed, comma-separated (`Omnivore` itself is the example of combining two: `extends Herbivore, Carnivore`). A class can `implements` an unlimited number of interfaces, while it can only ever `extends` a single class. This is precisely how Java gives you the practical benefits people usually want from "multiple inheritance" (being many different things at once, capability-wise) without ever risking the diamond problem — you simply can't inherit multiple conflicting *implementations*, but you can freely promise to fulfill any number of *contracts*.
 
-*(Side note for later: Java 8+ lets interfaces have `default` methods — methods with an actual body. If two interfaces gave conflicting `default` implementations for the same method and one class implemented both, the diamond problem could resurface — Java forces you to override and manually resolve it in that case. This code doesn't use `default` methods, so it never hits that.)*
+## Interfaces extending other interfaces
 
-## One class, many interfaces — but only one parent class
+`Omnivore extends Herbivore, Carnivore` — note this only works interface-to-interface, never class-to-class. `Omnivore` doesn't add any new method of its own here; it just merges both existing contracts into one combined, bigger contract. Any class that then says `implements Omnivore` (like `Human`) must now satisfy BOTH `eatPlant()` and `eatAnimal()` — the compiler checks this and would refuse to compile `Human` if it only wrote one of the two methods.
 
-`Dog extends Mammal implements Herbivore` — one `extends`, one `implements`. But `implements` can list as many interfaces as you want, comma-separated: a class can implement any number of interfaces, while it can only ever extend one class. This is exactly how Java fakes "multiple inheritance" safely — you can't inherit multiple classes' *state/implementation*, but you can promise to fulfill any number of *contracts*.
+## Why does `Cat.eatAnimal()` have to be declared `public`?
 
-## Interfaces can extend multiple interfaces too
+This is a real question left directly in the code as a comment, so it's worth answering properly. Every method declared inside an interface is *implicitly* `public abstract`, whether you write those words or not — `Carnivore.java` just writes `void eatAnimal();`, but Java silently treats it as `public abstract void eatAnimal();` behind the scenes.
 
-`Omnivore extends Herbivore, Carnivore` — this only works between interfaces, not classes. `Omnivore` doesn't add a new method of its own; it just merges the two contracts into one bigger contract. Anything that `implements Omnivore` (like `Human`) now must satisfy both `eatPlant()` and `eatAnimal()` — Java checks this at compile time, so `Human` couldn't get away with writing only one of them.
+Now, general Java rule for overriding ANY method (covered in more depth in [[methodOverriding]]): when you override a method, you're allowed to make its access level **wider**, but never **narrower**, than the original. Since an interface's method is already sitting at the widest possible access level (`public`), any implementing class's version of that method is required to also be `public` — writing it as default/package-private access would be an illegal narrowing, and simply won't compile.
 
-## Why `Cat.eatAnimal()` has to be `public` (the question left in the code)
+## Why `List<Herbivore>` is allowed to hold both a `Human` and a `Dog`
 
-Every method declared in an interface is implicitly `public abstract`, even though `Carnivore.java` doesn't spell that out — Java adds it silently. When `Cat` implements `Carnivore` and overrides `eatAnimal()`, it's overriding a method that's already `public`. A general Java rule: when you override a method, you're allowed to make its access **wider**, never **narrower**. Since the interface's method is already at the widest level (`public`), the implementing class's version must also be `public` — writing it as default/package access would be narrowing it, which doesn't compile.
+`Human` and `Dog` have basically no meaningful relationship to each other via class inheritance — sure, they both technically extend the same empty `Mammal`, but that's not what's making this work. What actually makes it work is that both `implement Herbivore`. That shared contract alone is enough: `List<Herbivore>` only requires that every element in it can `eatPlant()` — it genuinely does not care what concrete class each element actually is. The loop's single call `herbivore.eatPlant()` correctly produces "dog is eating a plant" or "human is eating a plant" depending on the real object underneath — this is exactly the same runtime-polymorphism mechanism explained fully in [[polymorphism]], just grouped here by a shared *interface* instead of a shared *superclass*.
 
-## Why `List<Herbivore>` can hold both a `Human` and a `Dog`
+## Real use cases — why this matters outside toy examples
 
-`Human` and `Dog` aren't related to each other by class inheritance in any meaningful way (they both just extend the empty `Mammal`), but they both `implement Herbivore`. That shared contract is enough — `List<Herbivore>` only cares that every element can `eatPlant()`, not what class it actually is. The loop calls `herbivore.eatPlant()` once, and gets "dog is eating a plant" / "human is eating a plant" depending on the real object — same runtime-polymorphism idea as [[polymorphism]], just grouped by a shared interface instead of a shared superclass.
+Interfaces are how Java code stays flexible and swappable in real systems. A `Comparable` interface lets totally unrelated classes (a `String`, an `Integer`, your own custom `Employee` class) all be sortable using the exact same sorting code, because they all promise a `compareTo()` method. A `Runnable` interface lets you hand any piece of code — regardless of what class it came from — to a thread scheduler, because it only demands a `run()` method exist. In application design, an interface like `PaymentGateway` with a `charge()` method lets you write checkout logic once, against the interface, and freely swap in `StripeGateway`, `PaypalGateway`, or a `FakeGatewayForTesting` — none of them need to be related to each other by inheritance at all, they only need to honor the same contract. This exact idea — depending on the contract, not a specific class — is formalized as the "Dependency Inversion Principle" in [[solidPrinciples]].
+
+## Common mistakes to watch for
+- Trying to reduce access when implementing an interface method (writing it without `public`) — won't compile, as explained above.
+- Forgetting that a class implementing an interface with MULTIPLE required methods (like `Omnivore`) must implement every single one — missing even one is a compile error.
+- Assuming an interface method can carry state/fields the way an abstract class can — interfaces can only hold `public static final` constants, never real per-object instance fields. If your design genuinely needs shared state, that's a sign you might actually want an `abstract class` instead — see [[abstractClasses]] for the full comparison.
 
 ## The takeaway
-- Interface = contract only (method names/signatures), no state, and (without `default`) no implementation — the implementing class supplies the real body.
-- A class can `extends` only one class, but can `implements` any number of interfaces — this is how Java gets the benefits of "multiple inheritance" (many contracts) without the diamond-problem risk of multiple conflicting implementations.
-- An interface can `extends` multiple other interfaces, merging their required methods into one bigger contract.
-- Overriding can only widen access, never narrow it — since interface methods are always `public`, every implementing class's method must be `public` too.
-- Grouping unrelated classes by shared *behaviour* (an interface) rather than shared *ancestry* (a superclass) is the main reason interfaces exist — see [[abstraction]] for the same "expose the what, hide the how" idea applied via `abstract class` instead.
+- An interface is a pure contract — method names, parameters, and return types only, with no state and (without `default` methods) no implementation — the implementing class must always supply the real, working body.
+- A class can `extends` only one class, but `implements` any number of interfaces — this is how Java achieves the useful parts of "multiple inheritance" (many contracts) while completely avoiding the diamond-problem risk that comes from multiple conflicting real implementations.
+- An interface can itself `extends` multiple other interfaces, merging all of their required methods into one bigger combined contract.
+- Overriding rules only ever allow widening access, never narrowing it — since interface methods are always implicitly `public`, every implementing class's version must also be `public`.
+- Grouping unrelated classes together by a shared *capability* (an interface) rather than shared *ancestry* (a superclass) is the core reason interfaces exist — see [[abstraction]] for the closely related "expose the what, hide the how" idea, achieved there via `abstract class` instead.
